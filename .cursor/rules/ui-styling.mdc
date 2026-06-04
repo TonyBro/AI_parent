@@ -1,0 +1,319 @@
+---
+alwaysApply: true
+---
+
+# UI Styling and Component Rules
+
+When working on the Mini App UI (`miniapp/src/`), **ALWAYS** follow these rules:
+
+## ⚠️ CRITICAL: Component Reuse Policy
+
+**BEFORE writing ANY UI code:**
+
+1. ✅ **CHECK** `miniapp/src/components/` directory for existing components
+2. ✅ **IMPORT** from `./components` or `../components` 
+3. ✅ **REUSE** existing components (Button, FormField, Section, etc.)
+4. ❌ **NEVER** create manual wrapper divs like `<div style={{ padding: '0 16px 16px' }}>`
+5. ❌ **NEVER** create inline styles when a component exists
+6. ❌ **NEVER** duplicate component logic
+
+**Example of WRONG approach:**
+```tsx
+// ❌ BAD - Manual wrapper
+<div style={{ padding: '0 16px 16px' }}>
+  <div style={{ fontSize: '14px', marginBottom: '8px' }}>Name</div>
+  <input type="text" value={name} onChange={setName} />
+</div>
+```
+
+**Example of CORRECT approach:**
+```tsx
+// ✅ GOOD - Use composable component
+<FormField label="Name" value={name} onChange={setName} />
+```
+
+## 0. Primary Rule: Reuse Components Directory
+
+**CRITICAL:** Before creating ANY new UI element, button, input, select, modal, or styled div:
+1. **FIRST** check `miniapp/src/components/` for existing components
+2. **ALWAYS** import from `./components` or `../components` (never create duplicates)
+3. **NEVER** create inline styles or manual wrappers when a component exists
+
+Available component categories:
+- `components/form/` - All form inputs, labels, hints
+- `components/layout/` - Page wrappers, sections, headers
+- `components/feedback/` - Buttons, modals, loaders
+- `components/shared/` - Icons, avatars, lists, toggles
+
+## 1. Reuse Existing Styles
+
+- **NEVER create new CSS classes or inline styles** unless explicitly requested by the user
+- **ALWAYS use existing CSS classes** from `miniapp/src/styles.css`:
+  - `.ui-card` - for card backgrounds
+  - `.ui-loader-overlay` - for overlay/modal backgrounds  
+  - `.ui-section` - for sections with titles
+  - `.ui-list-item` - for list rows
+  - `.ui-form-input` - for form inputs
+  - `.ui-toggle` - for toggle switches
+  - And all other `.ui-*` classes
+
+## 2. Reuse Existing Components
+
+- **ALWAYS use existing components** from `miniapp/src/components/`:
+  - `Button` - for **ALL buttons** (supports `variant`: primary, secondary, danger; `fullWidth` prop)
+  - `ConfirmModal` - for **ALL confirmation dialogs** (replaces `window.confirm()`)
+  - `Section` - for grouped content with optional titles
+  - `ListItem` - for clickable rows
+  - `FormField` - for **ALL text/number inputs with labels** (composable, includes label + input + hint)
+  - `FormTextAreaField` - for **ALL textareas with labels** (composable, includes label + textarea + hint)
+  - `FormSelectField` - for **ALL dropdown selects with labels** (composable, includes label + select + hint)
+  - `FormInput` / `FormTextArea` - for standalone form inputs without labels (rare use case)
+  - `FormLabel` - for standalone form field labels (use FormField instead)
+  - `HintText` - for standalone helper/hint text (use FormField's hint prop instead)
+  - `CustomSelect` - for standalone dropdown selects without labels (use FormSelectField instead)
+  - `Page`, `ProfileHeader`, `Avatar`, `Toggle`, `ToggleItem`, `Loader`, etc.
+- **DO NOT create new styled divs** when an existing component exists
+- **DO NOT use `window.confirm()`** - use `ConfirmModal` component instead
+- **DO NOT create inline button styles** - use `Button` component with proper `variant` prop
+- **DO NOT wrap FormLabel + FormInput in divs** - use `FormField` component instead
+- **DO NOT wrap FormLabel + FormTextArea in divs** - use `FormTextAreaField` component instead
+- **DO NOT wrap FormLabel + CustomSelect in divs** - use `FormSelectField` component instead
+
+## 2.1. Composable Form Components
+
+**ALWAYS prefer composable form components** that include labels, inputs, and hints in one component:
+
+- `FormField` - text/number inputs with optional label and hint
+- `FormTextAreaField` - textareas with optional label and hint
+- `FormSelectField` - dropdown selects with optional label and hint
+
+These components:
+- Include built-in wrapper div with standard padding (`0 16px 16px`)
+- Accept `label` prop for the field label
+- Accept `hint` prop for helper text below the field
+- Pass through all native input/textarea/select props
+- Handle spacing consistently
+
+Example:
+```tsx
+// ❌ BAD: Manual wrapping with FormLabel
+<div style={{ padding: '0 16px 16px' }}>
+  <FormLabel>Name</FormLabel>
+  <FormInput value={name} onChange={setName} />
+  <HintText style={{ marginTop: '4px' }}>Enter your full name</HintText>
+</div>
+
+// ✅ GOOD: Using FormField
+<FormField
+  label="Name"
+  hint="Enter your full name"
+  value={name}
+  onChange={setName}
+/>
+```
+
+## 3. Use CSS Variables
+
+- **ALWAYS use CSS variables** for colors and theming:
+  - `var(--bg)` - background color
+  - `var(--fg)` - foreground/text color
+  - `var(--muted)` - muted text color
+  - `var(--card)` - card background
+  - `var(--border)` - border color
+  - `var(--accent)` - accent/primary color
+  - `var(--danger)` - danger/error color
+- **NEVER hardcode colors** like `#fff`, `rgba(...)`, etc. unless the exact shade doesn't exist
+
+## 4. Follow Spacing Patterns
+
+- Composable form components (`FormField`, `FormTextAreaField`, `FormSelectField`) handle padding automatically
+- Standard padding inside sections: `padding: '0 16px 16px'` (built into composable components)
+- Standard gap between buttons: `gap: '12px'`
+- Standard margin between sections: Already handled by `.ui-section`
+
+## 5. Component Props Over Inline Styles
+
+- Use component props when available:
+  - `<Button variant="danger" fullWidth />` instead of inline styles
+  - `<FormInput hasDivider />` instead of adding borders manually
+- Only add inline styles for positioning or specific overrides
+
+## 6. Modal and Confirmation Dialogs
+
+- **ALWAYS use `ConfirmModal`** for confirmation dialogs
+- **NEVER use `window.confirm()`** or browser native dialogs
+- Modal pattern:
+  ```tsx
+  const [showModal, setShowModal] = useState(false);
+  
+  <ConfirmModal
+    isOpen={showModal}
+    title={t("modal.title")}
+    message={t("modal.message")}
+    confirmText={t("modal.confirm")}
+    cancelText={t("modal.cancel")}
+    onConfirm={() => { /* action */ setShowModal(false); }}
+    onCancel={() => setShowModal(false)}
+    variant="danger" // or "primary"
+  />
+  ```
+
+## 7. Button Usage
+
+- **ALWAYS use `Button` component** from components
+- Available variants: `primary` (default, blue), `secondary` (gray), `danger` (red)
+- Use `fullWidth` prop for full-width buttons
+- Example:
+  ```tsx
+  <Button variant="danger" fullWidth onClick={handleDelete}>
+    {t("delete")}
+  </Button>
+  ```
+
+## 8. Component Import
+
+**ALWAYS import from the central components directory:**
+```tsx
+import { Button, FormField, FormTextAreaField, Section, ... } from './components';
+// or from pages:
+import { Button, FormField, FormTextAreaField, Section, ... } from '../components';
+```
+
+## 9. Quick Reference: Available Components
+
+### Form Components (`components/form/`)
+- `FormField` - Text/number input with label & hint ⭐ USE THIS
+- `FormTextAreaField` - Textarea with label & hint ⭐ USE THIS
+- `FormSelectField` - Dropdown with label & hint ⭐ USE THIS
+- `FormInput` - Standalone input (only when no label needed)
+- `FormTextArea` - Standalone textarea (only when no label needed)
+- `FormLabel` - Standalone label (prefer FormField instead)
+- `HintText` - Standalone hint (prefer FormField's hint prop)
+- `CustomSelect` - Standalone select (prefer FormSelectField)
+- `Toggle` - Toggle switch
+
+### Layout Components (`components/layout/`)
+- `Page` - Page wrapper
+- `Section` - Card section with optional title
+- `SectionTitle` - Section title
+- `ProfileHeader` - Profile header with avatar
+- `ActionHeader` - Centered action header
+
+### Feedback Components (`components/feedback/`)
+- `Button` - All buttons (variants: primary, secondary, danger)
+- `ConfirmModal` - Confirmation dialogs
+- `Loader` - Loading indicator
+
+### Shared Components (`components/shared/`)
+- `Avatar` - User avatar with fallback
+- `ListItem` - Clickable list row
+- `ToggleItem` - List row with toggle
+- `TokenCard` - Token display card
+- `InputGroup` - Legacy input group
+- All icons: `IconInfo`, `IconQuiz`, `IconBroadcast`, `IconCommands`, `IconIntegrations`, `IconPlus`, `IconExternalLink`, `IconDrag`, `IconCross`
+- `ICON_SIZES` - Standardized icon sizes constant
+
+## Example: Good vs Bad
+
+### ❌ BAD (Creating new styles or not using composable components):
+```tsx
+// Bad: Custom modal with inline styles
+<div style={{
+  position: 'fixed',
+  background: 'rgba(0,0,0,0.6)',
+  display: 'flex',
+  ...
+}}>
+  <div style={{ background: '#1c252f', padding: '24px' }}>
+    <button style={{ background: 'red', color: 'white' }}>Delete</button>
+  </div>
+</div>
+
+// Bad: Using window.confirm()
+if (window.confirm("Are you sure?")) {
+  handleDelete();
+}
+
+// Bad: Inline button styles
+<button style={{ background: 'red', padding: '12px' }}>Delete</button>
+
+// Bad: Manual wrapping with FormLabel
+<div style={{ padding: '0 16px 16px' }}>
+  <FormLabel>Name</FormLabel>
+  <FormInput value={name} onChange={setName} />
+</div>
+
+// Bad: Inline hint text
+<div style={{ fontSize: '12px', color: 'var(--muted)' }}>Enter your full name</div>
+```
+
+### ✅ GOOD (Reusing existing composable components):
+```tsx
+// Good: Using ConfirmModal component
+const [showModal, setShowModal] = useState(false);
+
+<ConfirmModal
+  isOpen={showModal}
+  title="Delete Item"
+  message="Are you sure you want to delete this?"
+  confirmText="Delete"
+  cancelText="Cancel"
+  onConfirm={handleDelete}
+  onCancel={() => setShowModal(false)}
+  variant="danger"
+/>
+
+// Good: Using Button component
+<Button variant="danger" fullWidth onClick={() => setShowModal(true)}>
+  Delete
+</Button>
+
+// Good: Using FormField composable component
+<FormField
+  label="Name"
+  hint="Enter your full name"
+  value={name}
+  onChange={setName}
+/>
+
+// Good: Using FormTextAreaField composable component
+<FormTextAreaField
+  label="Description"
+  hint="Provide a detailed description"
+  value={description}
+  onChange={setDescription}
+  rows={4}
+/>
+
+// Good: Using FormSelectField composable component
+<FormSelectField
+  label="Category"
+  value={category}
+  onChange={setCategory}
+  options={[
+    { value: "a", label: "Option A" },
+    { value: "b", label: "Option B" },
+  ]}
+/>
+
+// Good: Using existing CSS classes
+<div className="ui-loader-overlay">
+  <div className="ui-card" style={{ padding: '24px' }}>
+    <Button variant="danger">Delete</Button>
+  </div>
+</div>
+```
+
+## When to Create New Styles
+
+Only create new CSS classes or significant inline styles when:
+1. The user **explicitly requests** a custom design
+2. No existing component or class can achieve the desired result
+3. You're implementing a completely new UI pattern not present in the app
+
+**Before creating anything new:**
+- Check all files in `miniapp/src/components/` directory
+- Verify no existing component can be adapted
+- Consider if a prop can be added to an existing component instead
+
+Otherwise, **always default to existing styles and components from the components directory**.

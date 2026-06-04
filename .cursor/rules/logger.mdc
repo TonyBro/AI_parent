@@ -1,0 +1,54 @@
+---
+description: Enforce use of custom Logger instead of console methods
+globs: src/**/*.ts
+---
+
+# Use Custom Logger Rule
+
+**CRITICAL:** NEVER use `console.log()`, `console.error()`, `console.warn()`, `console.info()`, or `console.debug()` in the backend code (`src/`). 
+
+## Rule Summary
+Always use the custom `Logger` class from `src/utils/logger.ts`. This ensures consistent log formatting, timestamping, and domain-based level filtering.
+
+## Implementation Details
+
+### 1. Import the Logger
+```typescript
+import { Logger } from '../utils/logger'; // Adjust path as necessary
+```
+
+### 2. Usage Pattern
+All logger methods require a `LogDomain` as the first argument.
+
+```typescript
+// ✅ CORRECT
+Logger.info('API', 'Request received', { path: '/api/bots' });
+Logger.error('DB', 'Failed to save bot', error);
+Logger.debug('AI', 'Processing prompt', { tokens: 150 });
+
+// ❌ WRONG
+console.log('Request received');
+console.error('Failed to save bot', error);
+```
+
+### 3. Available Domains
+Use one of the following domains defined in `src/utils/logger.ts`:
+- `SYSTEM`
+- `API`
+- `WEBHOOK`
+- `BOT`
+- `AI`
+- `DB`
+- `STREAMING`
+- `ADMIN`
+- `UTILS`
+- `SERVICES`
+
+### 4. Exceptions
+The only exception is within the `Logger` class implementation itself (`src/utils/logger.ts`), where it uses `console` methods to output the formatted logs.
+
+## Why?
+The custom logger provides:
+1. **Consistency:** ISO timestamps and uniform formatting.
+2. **Filtering:** Ability to change log levels globally or per domain via environment variables (`LOG_LEVEL`, `LOG_DOMAINS`).
+3. **Traceability:** Easy identification of which part of the system generated the log.

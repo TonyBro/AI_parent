@@ -1,0 +1,619 @@
+---
+alwaysApply: true
+---
+
+# Page and Component Creation Patterns
+
+When creating new pages or major UI components in the Mini App, **ALWAYS** follow these established patterns.
+
+## Page Structure Pattern
+
+### 1. File Organization
+- Place pages in `miniapp/src/pages/` for routed pages
+- Place feature components in `miniapp/src/` for embedded components (like `Commands.tsx`, `Broadcast.tsx`)
+- Use PascalCase for component names
+
+### 2. Component Signature Pattern
+
+```tsx
+// For feature components with props
+interface ComponentProps {
+  botId: string;
+  view: "list" | "edit" | "other-views";
+  onViewChange?: (view: string) => void;
+  onCanSaveChange?: (canSave: boolean) => void;
+  saveRef?: React.MutableRefObject<() => void>;
+  // ... other props
+}
+
+export function ComponentName({ botId, view, onViewChange, ... }: ComponentProps) {
+  // Implementation
+}
+
+// For page components
+export const PageName: React.FC = () => {
+  // Implementation
+};
+```
+
+### 3. Standard Imports
+
+```tsx
+import React, { useEffect, useState, useCallback } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { 
+  Section, 
+  ListItem, 
+  ToggleItem, 
+  FormField,
+  FormTextAreaField,
+  FormSelectField,
+  Loader,
+  Button,
+  Page,
+  // ... other components needed
+} from "./components"; // or "../components" for pages
+import { useTranslation } from "./i18n"; // or "../i18n"
+import { useBots } from "./store/BotContext"; // or "../store/BotContext"
+import { useBackButton } from "./hooks/useBackButton"; // if needed
+import { useMainButton } from "./hooks/useMainButton"; // if needed
+```
+
+### 4. State Management Pattern
+
+```tsx
+export function ComponentName({ botId, ... }: Props) {
+  const { t, translateError } = useTranslation();
+  const navigate = useNavigate();
+  
+  // Loading states
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  
+  // UI states
+  const [status, setStatus] = useState<string>("");
+  const [error, setError] = useState<string | null>(null);
+  
+  // Data
+  const [items, setItems] = useState<ItemType[]>([]);
+  
+  // Form state
+  const [form, setForm] = useState({
+    field1: "",
+    field2: "",
+    // ...
+  });
+
+  // ... rest of implementation
+}
+```
+
+### 5. Data Loading Pattern
+
+```tsx
+const loadData = useCallback(async () => {
+  try {
+    setLoading(true);
+    setError(null);
+    const data = await fetchData(botId);
+    setItems(data);
+  } catch (e: any) {
+    setError(translateError(e));
+  } finally {
+    setLoading(false);
+  }
+}, [botId, translateError]);
+
+useEffect(() => {
+  loadData();
+}, [loadData]);
+```
+
+### 6. Loading State Rendering
+
+```tsx
+// ALWAYS use Loader component, never plain text
+if (loading) {
+  return <Loader text={t("miniapp.loading")} />;
+}
+
+// For pages with Page wrapper
+if (loading && !data) {
+  return <Page><Loader /></Page>;
+}
+
+// For fullscreen loading during operations
+{saving && <Loader fullscreen text={status} />}
+```
+
+### 7. Form Section Pattern
+
+**CRITICAL: By default, ALWAYS use Section with `title` prop for form fields:**
+
+```tsx
+// ✅ DEFAULT PATTERN: Section title + plain input (PREFERRED)
+<Section title={t("miniapp.field_name")}>
+  <FormInput
+    placeholder={t("miniapp.field_placeholder")}
+    value={form.fieldName}
+    onChange={(e) => setForm({ ...form, fieldName: e.target.value })}
+  />
+</Section>
+
+<Section title={t("miniapp.description")}>
+  <FormTextArea
+    placeholder={t("miniapp.description_placeholder")}
+    value={form.description}
+    onChange={(e) => setForm({ ...form, description: e.target.value })}
+    rows={4}
+  />
+</Section>
+
+<Section title={t("miniapp.category")} contentClassName="ui-section-padded">
+  <CustomSelect
+    value={form.category}
+    onChange={(val) => setForm({ ...form, category: val })}
+    options={[
+      { value: "a", label: "Option A" },
+      { value: "b", label: "Option B" },
+    ]}
+  />
+</Section>
+
+// ❌ BAD: Using FormField/FormTextAreaField/FormSelectField (only use when absolutely necessary)
+<Section>
+  <FormField label="Name" ... />
+</Section>
+
+// ⚠️ ALTERNATIVE: Only use FormField when you need inline label + hint in same section
+<Section>
+  <FormField
+    label={t("miniapp.field_name")}
+    hint={t("miniapp.field_hint")}
+    placeholder={t("miniapp.field_placeholder")}
+    value={form.fieldName}
+    onChange={(e) => setForm({ ...form, fieldName: e.target.value })}
+  />
+</Section>
+
+// ✅ GOOD: Group related fields in one section
+<Section title={t("miniapp.user_info")}>
+  <FormInput placeholder={t("miniapp.name")} hasDivider ... />
+  <FormInput placeholder={t("miniapp.email")} ... />
+</Section>
+```
+
+**Key Rules:**
+1. ✅ **DEFAULT**: Use `<Section title="...">` + `<FormInput>` / `<FormTextArea>` / `<CustomSelect>`
+2. ✅ Each field in its own Section for visual separation
+3. ⚠️ Only use `FormField` / `FormTextAreaField` / `FormSelectField` when you need label + hint inside the section
+4. ❌ Never put multiple unrelated fields in one continuous Section
+
+### 8. Form Input Patterns
+
+**Pattern 1: Section Title (DEFAULT - ALWAYS USE THIS):**
+
+```tsx
+// ✅ PREFERRED: Section title acts as label
+<Section title={t("miniapp.field_name")}>
+  <FormInput
+    placeholder={t("miniapp.placeholder")}
+    value={form.fieldName}
+    onChange={(e) => setForm({ ...form, fieldName: e.target.value })}
+  />
+</Section>
+
+<Section title={t("miniapp.description")}>
+  <FormTextArea
+    placeholder={t("miniapp.placeholder")}
+    value={form.description}
+    onChange={(e) => setForm({ ...form, description: e.target.value })}
+    rows={4}
+  />
+</Section>
+
+<Section title={t("miniapp.category")} contentClassName="ui-section-padded">
+  <CustomSelect
+    value={form.category}
+    onChange={(val) => setForm({ ...form, category: val })}
+    options={options}
+  />
+</Section>
+```
+
+**Note:** Use `contentClassName="ui-section-padded"` for sections containing `CustomSelect` or other elements that don't have built-in padding.
+
+**Pattern 2: Composable Components with Internal Labels (USE SPARINGLY):**
+
+```tsx
+// ⚠️ Only use when you need label + hint together
+<Section>
+  <FormField
+    label={t("miniapp.field_name")}
+    hint={t("miniapp.field_hint")}
+    placeholder={t("miniapp.placeholder")}
+    value={form.fieldName}
+    onChange={(e) => setForm({ ...form, fieldName: e.target.value })}
+  />
+</Section>
+
+<Section>
+  <FormTextAreaField
+    label={t("miniapp.description")}
+    hint={t("miniapp.description_hint")}
+    value={form.description}
+    onChange={(e) => setForm({ ...form, description: e.target.value })}
+    rows={4}
+  />
+</Section>
+
+<Section>
+  <FormSelectField
+    label={t("miniapp.category")}
+    value={form.category}
+    onChange={(val) => setForm({ ...form, category: val })}
+    options={options}
+  />
+</Section>
+```
+
+**Pattern 3: Multiple Related Fields (Group in Section with Title):**
+
+```tsx
+// ✅ For grouped inputs like in Commands
+<Section title={t("miniapp.command_info")}>
+  <FormInput
+    placeholder={t("miniapp.command")}
+    value={form.command}
+    onChange={(e) => setForm({ ...form, command: e.target.value })}
+    hasDivider
+  />
+  <FormInput
+    placeholder={t("miniapp.description")}
+    value={form.description}
+    onChange={(e) => setForm({ ...form, description: e.target.value })}
+  />
+</Section>
+```
+
+### 9. Toggle Pattern
+
+```tsx
+<Section>
+  <ToggleItem
+    label={t("miniapp.toggle_label")}
+    subtitle={t("miniapp.toggle_description")}
+    checked={form.enabled}
+    onChange={(val) => setForm({ ...form, enabled: val })}
+  />
+</Section>
+```
+
+### 10. List Pattern
+
+```tsx
+<Section title={t("miniapp.items_title")}>
+  {items.length === 0 ? (
+    <div style={{ padding: "20px", textAlign: "center", color: "var(--muted)" }}>
+      {t("miniapp.no_items")}
+    </div>
+  ) : (
+    items.map((item) => (
+      <ListItem
+        key={item.id}
+        icon={<IconComponent />}
+        label={item.name}
+        subtitle={item.description}
+        onClick={() => onEdit?.(item.id)}
+      />
+    ))
+  )}
+  <ListItem
+    icon={
+      <div className="ui-avatar-small" style={{ background: 'rgba(36, 129, 204, 0.1)', color: 'var(--accent)', border: '1px solid rgba(36, 129, 204, 0.2)' }}>
+        <IconPlus size={16} color="currentColor" />
+      </div>
+    }
+    label={t("miniapp.add_new")}
+    isAction
+    onClick={() => onEdit?.(null)}
+  />
+</Section>
+```
+
+### 11. Save/Delete Buttons Pattern
+
+```tsx
+// Save button in Section (if needed on page)
+<Section>
+  <div style={{ padding: '0 16px 16px' }}>
+    <Button
+      onClick={handleSave}
+      disabled={saving || !canSave}
+      fullWidth
+      variant="primary"
+    >
+      {t("miniapp.save")}
+    </Button>
+  </div>
+</Section>
+
+// Delete button (always danger variant)
+{editingId && (
+  <Section>
+    <div style={{ padding: '0 16px 16px' }}>
+      <Button
+        onClick={handleDelete}
+        disabled={saving}
+        variant="danger"
+        fullWidth
+      >
+        {t("miniapp.delete")}
+      </Button>
+    </div>
+  </Section>
+)}
+
+// OR use ListItem for danger actions
+<Section>
+  <ListItem
+    label={t("miniapp.delete")}
+    isDanger
+    onClick={handleDelete}
+  />
+</Section>
+```
+
+### 12. Error Display Pattern
+
+```tsx
+{error && (
+  <p className="error" style={{ padding: '16px', color: 'var(--tg-red)', margin: 0 }}>
+    {error}
+  </p>
+)}
+```
+
+### 13. Save Hook Integration (for pages with main button)
+
+```tsx
+const canSave = useMemo(() => {
+  // Validation logic
+  return form.name.trim() && hasChanged;
+}, [form, hasChanged]);
+
+useEffect(() => {
+  if (onCanSaveChange) {
+    onCanSaveChange(canSave);
+  }
+}, [canSave, onCanSaveChange]);
+
+useEffect(() => {
+  if (saveRef) {
+    saveRef.current = handleSave;
+  }
+}, [handleSave, saveRef]);
+
+// Or use useMainButton hook for pages
+useMainButton({
+  text: t("miniapp.save"),
+  onClick: handleSave,
+  isVisible: true,
+  isEnabled: canSave && !saving
+});
+```
+
+### 14. Back Button Integration
+
+```tsx
+useBackButton(() => {
+  navigate(-1);
+  // or
+  onViewChange?.("previous-view");
+});
+```
+
+## Complete Example Template
+
+```tsx
+import React, { useEffect, useState, useCallback, useMemo } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { 
+  Section, 
+  ListItem, 
+  FormInput,
+  FormTextArea,
+  Loader,
+  Button,
+  Page
+} from "../components";
+import { useTranslation } from "../i18n";
+import { useBots } from "../store/BotContext";
+import { useBackButton } from "../hooks/useBackButton";
+import { useMainButton } from "../hooks/useMainButton";
+import { getData, saveData, type DataType } from "../api";
+
+interface ComponentProps {
+  botId: string;
+  view: "list" | "edit";
+  editingId?: string | null;
+  onViewChange?: (view: string) => void;
+  onCanSaveChange?: (canSave: boolean) => void;
+  saveRef?: React.MutableRefObject<() => void>;
+}
+
+export function ComponentName({ 
+  botId, 
+  view, 
+  editingId,
+  onViewChange,
+  onCanSaveChange,
+  saveRef
+}: ComponentProps) {
+  const { t, translateError } = useTranslation();
+  const navigate = useNavigate();
+  
+  // States
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [items, setItems] = useState<DataType[]>([]);
+  const [form, setForm] = useState({
+    name: "",
+    description: "",
+  });
+
+  // Data loading
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await getData(botId);
+      setItems(data);
+    } catch (e: any) {
+      setError(translateError(e));
+    } finally {
+      setLoading(false);
+    }
+  }, [botId, translateError]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Form initialization for edit
+  useEffect(() => {
+    if (view === "edit" && editingId) {
+      const item = items.find(i => i.id === editingId);
+      if (item) {
+        setForm({
+          name: item.name,
+          description: item.description,
+        });
+      }
+    } else if (view === "edit" && !editingId) {
+      // Reset for new
+      setForm({ name: "", description: "" });
+    }
+  }, [view, editingId, items]);
+
+  // Validation
+  const canSave = useMemo(() => {
+    return form.name.trim() && form.description.trim();
+  }, [form]);
+
+  useEffect(() => {
+    if (onCanSaveChange) {
+      onCanSaveChange(canSave);
+    }
+  }, [canSave, onCanSaveChange]);
+
+  // Save handler
+  const handleSave = useCallback(async () => {
+    if (!canSave) return;
+    setSaving(true);
+    setStatus(t("miniapp.saving"));
+    try {
+      setError(null);
+      await saveData(botId, editingId || undefined, form);
+      await loadData();
+      onViewChange?.("list");
+    } catch (e: any) {
+      setError(translateError(e));
+    } finally {
+      setSaving(false);
+      setStatus("");
+    }
+  }, [botId, editingId, form, canSave, loadData, onViewChange, t, translateError]);
+
+  useEffect(() => {
+    if (saveRef) {
+      saveRef.current = handleSave;
+    }
+  }, [handleSave, saveRef]);
+
+  useBackButton(() => {
+    onViewChange?.("list");
+  });
+
+  // Loading state
+  if (loading) {
+    return <Loader text={t("miniapp.loading")} />;
+  }
+
+  // Render
+  const renderContent = () => {
+    if (view === "list") {
+      return (
+        <div>
+          <Section title={t("miniapp.items")}>
+            {items.length === 0 ? (
+              <div style={{ padding: "20px", textAlign: "center", color: "var(--muted)" }}>
+                {t("miniapp.no_items")}
+              </div>
+            ) : (
+              items.map((item) => (
+                <ListItem
+                  key={item.id}
+                  label={item.name}
+                  subtitle={item.description}
+                  onClick={() => onViewChange?.("edit")}
+                />
+              ))
+            )}
+          </Section>
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        {error && <p className="error" style={{ padding: '16px', color: 'var(--tg-red)', margin: 0 }}>{error}</p>}
+        
+        {/* DEFAULT PATTERN: Section title + plain input */}
+        <Section title={t("miniapp.name")}>
+          <FormInput
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            placeholder={t("miniapp.name_placeholder")}
+          />
+        </Section>
+
+        <Section title={t("miniapp.description")}>
+          <FormTextArea
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            placeholder={t("miniapp.description_placeholder")}
+            rows={4}
+          />
+        </Section>
+      </div>
+    );
+  };
+
+  return (
+    <>
+      {saving && <Loader fullscreen text={status} />}
+      {renderContent()}
+    </>
+  );
+}
+```
+
+## Key Rules Summary
+
+1. ✅ **ALWAYS** import from `./components` or `../components`
+2. ✅ **ALWAYS** use `Loader` component for loading states
+3. ✅ **ALWAYS** use `<Section title="...">` + plain inputs (FormInput/FormTextArea/CustomSelect) as DEFAULT pattern
+4. ✅ **ALWAYS** wrap each form field in its own `Section` for visual separation
+5. ✅ **ALWAYS** use Section `title` prop for field labels (not FormField/FormTextAreaField/FormSelectField)
+6. ⚠️ **ONLY** use `FormField`, `FormTextAreaField`, `FormSelectField` when you need label + hint together inside section
+7. ✅ **ALWAYS** use `Button` component with proper `variant` prop
+8. ✅ **ALWAYS** use `translateError()` for error messages
+9. ✅ **ALWAYS** use `useCallback` for async functions
+10. ✅ **ALWAYS** use `useMemo` for derived/computed values
+11. ✅ **NEVER** hardcode strings - use `t("key")` for all text
+12. ✅ **NEVER** create inline styles for buttons, inputs, or forms - use components
+13. ✅ **NEVER** use `window.confirm()` - use `ConfirmModal` component
+14. ✅ **NEVER** put all form fields in one continuous Section - separate them

@@ -1,0 +1,27 @@
+---
+description: Rule for translating new text strings into all supported languages
+globs: src/locales/*.json,miniapp/src/**/*.tsx
+alwaysApply: false
+---
+# Internationalization Rule
+
+Whenever you add new text, labels, or UI strings to the project:
+
+1.  **Use Translation Keys**: Instead of hardcoding strings in the code, use the translation helper `t("path.to.key")`.
+2.  **Translate to All Languages**: For every new key, add the corresponding translation to ALL files in `src/locales/`. 
+    The current supported languages are:
+    - `en.json` (English)
+    - `ru.json` (Russian)
+    - `es.json` (Spanish)
+    - `uk.json` (Ukrainian)
+    - `pt.json` (Portuguese)
+    - `fr.json` (French)
+    - `de.json` (German)
+    - `it.json` (Italian)
+    - `tr.json` (Turkish)
+3.  **Maintain JSON Structure**: Follow the existing nested structure in the locale files:
+    - `child`: Messages for the child bot (the one created by users).
+    - `parent`: Messages for the parent bot (the builder bot).
+    - `miniapp`: Strings used in the Mini App interface.
+4.  **Preserve Placeholders**: If a string contains placeholders like `{{name}}` or `{{count}}`, make sure they are included in all translations.
+5.  **Accuracy**: Ensure the key is present in all files to avoid missing key errors.
